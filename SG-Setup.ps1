@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v35"
+$ScriptVersion = "v36"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -370,6 +370,11 @@ Set-Reg $cp "DownloadRestrictions"               1      # block downloads Safe B
 Set-Reg $cp "PromptForDownloadLocation"          0
 Set-Reg $cp "BrowserAddPersonEnabled"            0
 Set-Reg $cp "BrowserGuestModeEnabled"            0
+# no sign-in questions: no "turn on sync?", no "continue as / keep your browsing data?" managed-profile dialog
+Set-Reg $cp "SigninInterceptionEnabled"          0
+Set-Reg $cp "ProfileSeparationSettings"          2      # 2 = disabled (never asks to make a separate managed profile)
+Set-Reg $cp "SyncDisabled"                       $(if ($AdminStation) { 0 } else { 1 })   # stations: no Chrome sync (sync is how 150 junk extensions arrived on Production02)
+Set-Reg $cp "BrowserThemeColor"                  "#FFFFFF" "String"
 # anything an adware installer wrote into Chrome policy that we don't manage gets cleared
 Remove-Item "HKCU:\SOFTWARE\Policies\Google\Chrome" -Recurse -ErrorAction SilentlyContinue
 Set-Reg "$cp\ExtensionInstallForcelist" "1" "$CrdExtId;https://clients2.google.com/service/update2/crx" "String"   # Chrome Remote Desktop on every PC
@@ -614,6 +619,11 @@ New-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" -For
 New-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" -Name "LegacyDefaultPrinterMode" -Value 1 -PropertyType DWord -Force | Out-Null
 $want = @("Gabriel", "$env:COMPUTERNAME-Card") | Where-Object { Get-Printer -Name $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
 if ($want) { (New-Object -ComObject WScript.Network).SetDefaultPrinter($want) }
+# same look everywhere: Windows light mode, accent from wallpaper off
+$pz = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"; New-Item -Path $pz -Force | Out-Null
+New-ItemProperty -Path $pz -Name "AppsUseLightTheme" -Value 1 -PropertyType DWord -Force | Out-Null
+New-ItemProperty -Path $pz -Name "SystemUsesLightTheme" -Value 1 -PropertyType DWord -Force | Out-Null
+New-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "AutoColorization" -Value 0 -PropertyType DWord -Force | Out-Null
 # no "Let's finish setting up your device" / Microsoft-account nag for this user
 New-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement" -Force | Out-Null
 New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement" -Name "ScoobeSystemSettingEnabled" -Value 0 -PropertyType DWord -Force | Out-Null
@@ -643,7 +653,7 @@ Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" "Disab
 $as = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{7A1E5D2C-5601-4F2B-9C3D-0000000000A1}"
 Set-Reg $as "(Default)"  "Spirited Gifts user setup" "String"
 Set-Reg $as "StubPath"   "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\SGSetup\user-setup.ps1" "String"
-Set-Reg $as "Version"    "1,0,0,9" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
+Set-Reg $as "Version"    "1,0,0,10" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
 Set-Reg $as "IsInstalled" 1
 Ok "Per-user setup registered for next sign-in (taskbar reset to Chrome + Explorer, wallpaper, widgets off, Chrome default prompt)"
 
