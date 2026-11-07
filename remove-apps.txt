@@ -4,3 +4,4 @@
 # Epilog, Corel, Adobe, AntiMicro, CCleaner, printer software, drivers, or Xbox.
 
 Mozilla Firefox
+AnyDesk

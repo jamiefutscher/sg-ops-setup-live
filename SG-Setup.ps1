@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v38"
+$ScriptVersion = "v39"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -306,7 +306,7 @@ foreach ($k in Get-ItemProperty $uninstKeys -ErrorAction SilentlyContinue) {
     $inventory += $dn
     foreach ($w in $wanted) {
         if ($dn -like "*$w*") {
-            if ($keepAlways | Where-Object { $dn -like $_ }) { Warn "remove-apps.txt asked for '$dn' but it is on the protected list - skipped"; break }
+            if (($keepAlways | Where-Object { $dn -like $_ }) -and ($dn -notlike "AnyDesk*")) { Warn "remove-apps.txt asked for '$dn' but it is on the protected list - skipped"; break }
             $cmd = $k.QuietUninstallString; if (-not $cmd) { $cmd = $k.UninstallString }
             if (-not $cmd) { Warn "No uninstaller for '$dn' - remove by hand"; break }
             try {
@@ -655,6 +655,16 @@ Ok "Per-user setup registered for next sign-in (taskbar reset to Chrome + Explor
 
 # ---------------------------------------------------------------- 4b. SGAdmin (same local admin on every PC)
 Set-Reg "Registry::HKEY_USERS\.DEFAULT\Control Panel\Keyboard" "InitialKeyboardIndicators" "2147483648" "String"   # sign-in screen: Num Lock off
+# AnyDesk leftovers (its virtual printer) and, on design/engraving stations, the shared hello@ login - those stations sign in as info@ (Spirited Gifts) only
+Get-Printer -Name "AnyDesk*" -ErrorAction SilentlyContinue | Remove-Printer -ErrorAction SilentlyContinue
+if ($NeedsDropbox -and -not $AdminStation) {
+    foreach ($lu in Get-LocalUser -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "hello_thinkliquor*" -or $_.Name -like "hello*" }) {
+        if ($lu.Name -eq $env:USERNAME) { Warn "Signed in as $($lu.Name) right now - it is hidden from the sign-in screen from the next restart; use Add work account > info@spiritedgifts.com" }
+        Disable-LocalUser -Name $lu.Name -ErrorAction SilentlyContinue
+        Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" $lu.Name 0
+        Ok "hello@ login removed from this station ($($lu.Name)) - design/engraving stations use info@spiritedgifts.com"
+    }
+}
 Step "SGAdmin local admin"
 if ($AdminPassword) {
     $sec = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
