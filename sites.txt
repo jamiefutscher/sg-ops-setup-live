@@ -1,0 +1,15 @@
+# Spirited Gifts start page - one site per line:  Name | URL
+# Edit in Notepad. Lines starting with # are ignored. Order here = order on the page and bookmarks bar.
+# Optional: a line starting with DASHBOARD | <url> embeds the floor stats / leaderboard panel.
+
+Finale Inventory | https://app.finaleinventory.com/
+ShipStation | https://ship.shipstation.com/
+Order Desk | https://app.orderdesk.me/
+Plytix PIM | https://app.plytix.com/
+Stamped.io | https://go.stamped.io/
+Magento Admin | https://www.spiritedgifts.com/admin
+SpiritedGifts.com | https://www.spiritedgifts.com/
+Google Drive | https://drive.google.com/
+Gmail | https://mail.google.com/
+
+# DASHBOARD | https://paste-the-leaderboard-url-here

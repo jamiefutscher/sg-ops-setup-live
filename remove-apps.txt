@@ -1,0 +1,6 @@
+# Extra programs to uninstall on every PC - one name per line, as shown in the results file's
+# "Installed programs" list (partial names are OK, e.g.  HP Smart  or  McAfee ).
+# Lines starting with # are ignored. The script never touches Chrome, Webroot, ShipStation, Finale,
+# Epilog, Corel, Adobe, AntiMicro, CCleaner, printer software, drivers, or Xbox.
+
+Mozilla Firefox

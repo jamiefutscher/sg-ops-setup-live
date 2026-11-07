@@ -1,0 +1,12 @@
+# Files the self-updater (SG-Update task) downloads from this repo. One path per line. secrets.txt is NOT here on purpose.
+SG-Setup.ps1
+SG-Setup.cmd
+VERSION.txt
+sites.txt
+printers.txt
+remove-apps.txt
+start-template.html
+avatar-info.png
+avatar-admin.png
+ext/sg-card-printer.crx
+ext/update.xml

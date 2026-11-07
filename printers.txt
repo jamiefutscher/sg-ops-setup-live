@@ -1,0 +1,9 @@
+# Network printers to add on every PC:  Name | IP address
+# Uses Windows' built-in "Microsoft PCL6 Class Driver" (works with the Xerox C315s and the Brother laser).
+# Lines starting with # are ignored. Epilog lasers (.196-.199) and Mimaki are NOT managed here - leave them out.
+
+Gabriel  | 192.168.10.31
+Angelina | 192.168.10.172
+
+# Brother MFC-L8850CDW - add its IP here once it is plugged into the network:
+# Brother | 192.168.10.XXX
