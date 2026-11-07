@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v36"
+$ScriptVersion = "v37"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -637,7 +637,7 @@ $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 if (Test-Path $chrome) { Start-Process $chrome -ArgumentList "--make-default-browser" }
 # first sign-in only: open Windows Hello PIN setup so the password is typed once and a PIN takes over from then on
 $sg = "HKCU:\Software\SGSetup"; New-Item -Path $sg -Force | Out-Null
-if (-not (Get-ItemProperty $sg -Name PinPrompted -ErrorAction SilentlyContinue)) {
+if ($env:USERNAME -ne "SGAdmin" -and -not (Get-ItemProperty $sg -Name PinPrompted -ErrorAction SilentlyContinue)) {
     New-ItemProperty -Path $sg -Name "PinPrompted" -Value 1 -PropertyType DWord -Force | Out-Null
     Start-Sleep -Seconds 25   # let Explorer settle first
     Start-Process "ms-settings:signinoptions"
@@ -656,6 +656,17 @@ Set-Reg $as "StubPath"   "powershell.exe -NoProfile -ExecutionPolicy Bypass -Win
 Set-Reg $as "Version"    "1,0,0,10" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
 Set-Reg $as "IsInstalled" 1
 Ok "Per-user setup registered for next sign-in (taskbar reset to Chrome + Explorer, wallpaper, widgets off, Chrome default prompt)"
+
+# ---------------------------------------------------------------- 4b. SGAdmin (same local admin on every PC)
+Step "SGAdmin local admin"
+if ($AdminPassword) {
+    $sec = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
+    $u = Get-LocalUser -Name "SGAdmin" -ErrorAction SilentlyContinue
+    if ($u) { Set-LocalUser -Name "SGAdmin" -Password $sec -PasswordNeverExpires $true -AccountNeverExpires -UserMayChangePassword $false; Enable-LocalUser -Name "SGAdmin"; Ok "SGAdmin already here - password set to the one in secrets.txt" }
+    else { New-LocalUser -Name "SGAdmin" -Password $sec -FullName "SG Admin" -Description "Spirited Gifts admin (drive runs, remote fixes)" -PasswordNeverExpires -AccountNeverExpires -UserMayNotChangePassword | Out-Null; Ok "SGAdmin created (local administrator, password in secrets.txt)" }
+    if (-not (Get-LocalGroupMember -Group "Administrators" -Member "SGAdmin" -ErrorAction SilentlyContinue)) { Add-LocalGroupMember -Group "Administrators" -Member "SGAdmin" }
+    Set-Reg "HKLM:\SOFTWARE\SGSetup" "AdminAccount" "SGAdmin" "String"
+} else { Warn "No AdminPassword in secrets.txt - SGAdmin not created" }
 
 # ---------------------------------------------------------------- 5. GCPW
 Step "Google Credential Provider for Windows"
