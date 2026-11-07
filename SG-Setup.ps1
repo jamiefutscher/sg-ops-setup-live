@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v34"
+$ScriptVersion = "v35"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -614,15 +614,36 @@ New-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" -For
 New-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" -Name "LegacyDefaultPrinterMode" -Value 1 -PropertyType DWord -Force | Out-Null
 $want = @("Gabriel", "$env:COMPUTERNAME-Card") | Where-Object { Get-Printer -Name $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
 if ($want) { (New-Object -ComObject WScript.Network).SetDefaultPrinter($want) }
+# no "Let's finish setting up your device" / Microsoft-account nag for this user
+New-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement" -Force | Out-Null
+New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement" -Name "ScoobeSystemSettingEnabled" -Value 0 -PropertyType DWord -Force | Out-Null
+$cdm = "HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager"
+foreach ($n in "SubscribedContent-310093Enabled","SubscribedContent-338389Enabled","SubscribedContent-353694Enabled","SubscribedContent-353696Enabled","SoftLandingEnabled","SystemPaneSuggestionsEnabled") {
+    New-ItemProperty -Path $cdm -Name $n -Value 0 -PropertyType DWord -Force | Out-Null
+}
+"setup-nag off" | Add-Content $log
 # ask Windows to make Chrome the default browser (Windows shows its Default apps page - one click)
 $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 if (Test-Path $chrome) { Start-Process $chrome -ArgumentList "--make-default-browser" }
+# first sign-in only: open Windows Hello PIN setup so the password is typed once and a PIN takes over from then on
+$sg = "HKCU:\Software\SGSetup"; New-Item -Path $sg -Force | Out-Null
+if (-not (Get-ItemProperty $sg -Name PinPrompted -ErrorAction SilentlyContinue)) {
+    New-ItemProperty -Path $sg -Name "PinPrompted" -Value 1 -PropertyType DWord -Force | Out-Null
+    Start-Sleep -Seconds 25   # let Explorer settle first
+    Start-Process "ms-settings:signinoptions"
+    "PIN setup page opened (first sign-in)" | Add-Content $log
+}
 '@
 Set-Content -Path (Join-Path $Work "user-setup.ps1") -Value $userScript -Encoding UTF8
+# machine-wide: Windows tips, "finish setting up" and Microsoft-account suggestions off
+Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "DisableWindowsConsumerFeatures" 1
+Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "DisableSoftLanding" 1
+Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent" "DisableCloudOptimizedContent" 1
+Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" "DisableAutomaticRestartSignOn" 0
 $as = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{7A1E5D2C-5601-4F2B-9C3D-0000000000A1}"
 Set-Reg $as "(Default)"  "Spirited Gifts user setup" "String"
 Set-Reg $as "StubPath"   "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\SGSetup\user-setup.ps1" "String"
-Set-Reg $as "Version"    "1,0,0,8" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
+Set-Reg $as "Version"    "1,0,0,9" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
 Set-Reg $as "IsInstalled" 1
 Ok "Per-user setup registered for next sign-in (taskbar reset to Chrome + Explorer, wallpaper, widgets off, Chrome default prompt)"
 
