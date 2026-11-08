@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v40"
+$ScriptVersion = "v41"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -223,7 +223,11 @@ Ok "Store apps removed: $removed"
 $oemJunk = @("McAfee*","Norton*","*LiveSafe*","*WebAdvisor*","ExpressVPN*","*Booking.com*","WildTangent*",
   # browser hijackers / adware that change the search engine and nag to "open at login" (Nov 5: Production2 got Yahoo + spam)
   "OneLaunch*","Wave Browser*","WaveBrowser*","Shift Browser*","*Web Companion*","*Search Protect*","*Yahoo*","PC App Store*",
-  "*ByteFence*","*Driver Support*","*PC Accelerate*","*Search Baron*","*SearchEncrypt*","*Chromium*","*CleanMyPC*","*Advanced SystemCare*")
+  "*ByteFence*","*Driver Support*","*PC Accelerate*","*Search Baron*","*SearchEncrypt*","*Chromium*","*CleanMyPC*","*Advanced SystemCare*",
+  # laptop OEM junk (Pack5 = ASUS ROG laptop): gaming centers, OEM updaters, cloud storage trials, extra Office languages
+  "ASUS GIFTBOX*","ASUS Live Update*","ASUS Splendid*","ASUS USB Charger*","ASUS Virtual Camera*","ASUS Smart Gesture*","ROG Gaming Center*","*WebStorage*",
+  "NVIDIA GeForce Experience*","*SHIELD Streaming*","*ShadowPlay*","*HP Smart*","*HP Support Assistant*","*HP Wolf*","*Dell SupportAssist*","*Lenovo Vantage*",
+  "Microsoft 365*- es-es","Microsoft 365*- fr-fr","Office 16 Click-to-Run Localization Component - es-es","Office 16 Click-to-Run Localization Component - fr-fr")
 $uninstKeys = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*","HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*")
 foreach ($k in Get-ItemProperty $uninstKeys -ErrorAction SilentlyContinue) {
     $dn = $k.DisplayName; if (-not $dn) { continue }
@@ -235,7 +239,9 @@ foreach ($k in Get-ItemProperty $uninstKeys -ErrorAction SilentlyContinue) {
                 Write-Host "    removing $dn"
                 try {
                     $guid = [regex]::Match($cmd,'\{[0-9A-Fa-f-]{36}\}').Value
-                    if ($guid) {
+                    if ($cmd -like "*OfficeClickToRun*") {
+                        $proc = Start-Process cmd.exe -ArgumentList "/c `"$cmd`" DisplayLevel=False" -PassThru -WindowStyle Hidden   # Office silent switch
+                    } elseif ($guid) {
                         $proc = Start-Process msiexec.exe -ArgumentList "/x $guid /qn /norestart" -PassThru
                     } else {
                         $proc = Start-Process cmd.exe -ArgumentList "/c `"$cmd`" /quiet /silent /S" -PassThru -WindowStyle Hidden
@@ -655,6 +661,18 @@ Ok "Per-user setup registered for next sign-in (taskbar reset to Chrome + Explor
 
 # ---------------------------------------------------------------- 4b. SGAdmin (same local admin on every PC)
 Set-Reg "Registry::HKEY_USERS\.DEFAULT\Control Panel\Keyboard" "InitialKeyboardIndicators" "2147483648" "String"   # sign-in screen: Num Lock off
+# Windows Update: install quietly, never nag "restart now / wait an hour" on a signed-in user; Windows 10: no end-of-support / upgrade-to-11 screens, no News & Interests
+$wu = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
+Set-Reg "$wu\AU" "NoAutoRebootWithLoggedOnUsers" 1
+Set-Reg $wu "SetAutoRestartNotificationDisable" 1
+Set-Reg $wu "SetUpdateNotificationLevel" 1; Set-Reg $wu "UpdateNotificationLevel" 1   # 1 = no toast notifications
+if ([Environment]::OSVersion.Version.Build -lt 22000) {
+    Set-Reg $wu "DisableOSUpgrade" 1
+    Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Gwx" "DisableGwx" 1
+    Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\OSUpgrade" "AllowOSUpgrade" 0
+    Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds" "EnableFeeds" 0
+    Ok "Windows 10 PC: end-of-support / upgrade nags and News & Interests turned off (this PC stays on Windows 10)"
+} else { Ok "Windows Update restart reminders off (updates still install at 3 AM)" }
 # AnyDesk leftovers (its virtual printer) and, on design/engraving stations, the shared hello@ login - those stations sign in as info@ (Spirited Gifts) only
 Get-Printer -Name "AnyDesk*" -ErrorAction SilentlyContinue | Remove-Printer -ErrorAction SilentlyContinue
 if ($NeedsDropbox -and -not $AdminStation) {
