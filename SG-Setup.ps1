@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v45"
+$ScriptVersion = "v46"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -352,6 +352,24 @@ Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate" "UpdateDefault" 1   # kee
 foreach ($run in @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run","HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run")) {
     if (Test-Path $run) { Get-Item $run | Select-Object -ExpandProperty Property | Where-Object { $_ -like "*Edge*" } | ForEach-Object { Remove-ItemProperty -Path $run -Name $_ -ErrorAction SilentlyContinue } }
 }
+# Edge must still be able to START: a leftover "Debugger" redirect on these four programs made them silently do nothing, which broke
+# every app that opens a sign-in page or uses the built-in web view (CorelDRAW sign-in hung at "Continue in your browser").
+foreach ($exe in "msedge.exe","MicrosoftEdge.exe","MicrosoftEdgeUpdate.exe","msedgewebview2.exe") {
+    $ifeo = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\$exe"
+    if ((Get-ItemProperty $ifeo -Name Debugger -ErrorAction SilentlyContinue).Debugger) { Remove-ItemProperty -Path $ifeo -Name Debugger -Force -ErrorAction SilentlyContinue; Ok "Removed launch block on $exe" }
+}
+# Chrome is the default browser for every user (links from CorelDRAW, ShipStation Connect, Slack etc. open in Chrome, not Edge)
+$assoc = @'
+<?xml version="1.0" encoding="UTF-8"?>
+<DefaultAssociations>
+  <Association Identifier=".htm" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier=".html" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="http" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="https" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+</DefaultAssociations>
+'@
+Set-Content -Path (Join-Path $Work "default-apps.xml") -Value $assoc -Encoding UTF8
+Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" "DefaultAssociationsConfiguration" "C:\SGSetup\default-apps.xml" "String"
 Ok "Edge: no startup boost, no background mode, not pushed as default"
 
 # ---------------------------------------------------------------- 4. CHROME
