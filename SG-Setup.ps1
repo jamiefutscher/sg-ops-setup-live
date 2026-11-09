@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v42"
+$ScriptVersion = "v43"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -421,6 +421,27 @@ if ($AdminStation) {
     Set-Reg "$cp\ExtensionInstallAllowlist" "1" $CrdExtId "String"   # Chrome Remote Desktop and the Card Printer are the allowed extensions
     Set-Reg "$cp\ExtensionInstallAllowlist" "2" $CardExtId "String"
     Ok "Chrome enrolled in Chrome Enterprise Core (Warehouse Devices), locked down, YouTube blocked, extension installs blocked"
+}
+
+# ---------------------------------------------------------------- 2b. CHROME REMOTE DESKTOP (done early so the PC can be taken over remotely while the rest runs)
+Step "Chrome Remote Desktop"
+if (Test-Path "C:\Program Files (x86)\Google\Chrome Remote Desktop") { Ok "Chrome Remote Desktop host already installed" }
+else {
+    $crd = Join-Path $Work "chromeremotedesktophost.msi"
+    if (Get-File $CrdHostUrl $crd) {
+        $p = Start-Process msiexec.exe -ArgumentList "/i `"$crd`" /qn /norestart" -PassThru
+        if (-not $p.WaitForExit(240000)) { $p.Kill(); Warn "Chrome Remote Desktop installer hung and was stopped" }
+        elseif (Test-Path "C:\Program Files (x86)\Google\Chrome Remote Desktop") { Ok "Chrome Remote Desktop host installed" } else { Warn "Chrome Remote Desktop host not found after install (msiexec exit $($p.ExitCode))" }
+    }
+}
+if (Test-Path "C:\ProgramData\Google\Chrome Remote Desktop\host.json") { Ok "Remote access already turned on for this PC" }
+elseif (-not $Silent) {
+    $chromeExe2 = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+    if (Test-Path $chromeExe2) { Start-Process $chromeExe2 -ArgumentList "--new-window https://remotedesktop.google.com/access" }
+    Write-Host ""
+    Write-Host "    >>> Chrome just opened the Remote Desktop page. Sign in as jamie@spiritedgifts.com, click TURN ON, Next, enter the 6-digit remote PIN." -ForegroundColor Yellow
+    Write-Host "    >>> Setup keeps running behind it - do not wait." -ForegroundColor Yellow
+    Warn "Remote access not turned on yet - Remote Desktop page was opened: sign in as jamie@spiritedgifts.com, Turn on, 6-digit remote PIN"
 }
 
 # ---------------------------------------------------------------- 4b. START PAGE + BOOKMARKS (from sites.txt)
@@ -809,7 +830,7 @@ if ($NeedsDropbox) {
 Step "Slack"
 if ((Test-Path "C:\Program Files\Slack\slack.exe") -or (Get-ChildItem "C:\Users\*\AppData\Local\slack\slack.exe" -ErrorAction SilentlyContinue)) { Ok "Slack already installed" }
 elseif (Get-Command winget -ErrorAction SilentlyContinue) {
-    $p = Start-Process winget -ArgumentList "install --id SlackTechnologies.Slack -e --scope machine --silent --accept-package-agreements --accept-source-agreements" -Wait -PassThru -WindowStyle Hidden
+    $p = Start-Process winget -ArgumentList "install --id SlackTechnologies.Slack -e --scope machine --silent --accept-package-agreements --accept-source-agreements --disable-interactivity" -Wait -PassThru -WindowStyle Hidden
     if ($p.ExitCode -eq 0) { Ok "Slack installed (machine-wide) - staff sign in once" } else { Warn "Slack install failed (winget exit $($p.ExitCode))" }
 } else { Warn "winget not available - Slack skipped" }
 
@@ -825,19 +846,6 @@ elseif ($SsConnectUrl -match '^https?://') {
         else { Ok "ShipStation Connect installed - sign in once with the ShipStation user, then share its printers" }
     }
 } else { Warn "ShipStation Connect: no installer link in the build yet - install from ShipStation > Settings > Printing > Download" }
-
-# ---------------------------------------------------------------- 6a4. CHROME REMOTE DESKTOP HOST (so Jamie/Claude can take over any PC)
-Step "Chrome Remote Desktop"
-if (Test-Path "C:\Program Files (x86)\Google\Chrome Remote Desktop") { Ok "Chrome Remote Desktop host already installed" }
-else {
-    $crd = Join-Path $Work "chromeremotedesktophost.msi"
-    if (Get-File $CrdHostUrl $crd) {
-        $p = Start-Process msiexec.exe -ArgumentList "/i `"$crd`" /qn /norestart" -PassThru
-        if (-not $p.WaitForExit(240000)) { $p.Kill(); Warn "Chrome Remote Desktop installer hung and was stopped" }
-        elseif (Test-Path "C:\Program Files (x86)\Google\Chrome Remote Desktop") { Ok "Chrome Remote Desktop host installed" } else { Warn "Chrome Remote Desktop host not found after install (msiexec exit $($p.ExitCode))" }
-    }
-}
-Warn "Remote access: once per PC, open remotedesktop.google.com/access as hello@, click Turn on, PIN 8224"
 
 # ---------------------------------------------------------------- 6b. NETWORK PRINTERS (printers.txt)
 Step "Network printers"
@@ -896,13 +904,6 @@ Step "Dictation and clipboard"
 Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" "AllowClipboardHistory" 1
 Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization" "AllowInputPersonalization" 1
 Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Speech" "AllowSpeechModelUpdate" 1
-$winget = Get-Command winget -ErrorAction SilentlyContinue
-if ($winget) {
-    if (-not (Test-Path "C:\Program Files\Ditto\Ditto.exe") -and -not (Test-Path "C:\Program Files (x86)\Ditto\Ditto.exe")) {
-        $p = Start-Process winget -ArgumentList "install --id Ditto.Ditto -e --silent --accept-package-agreements --accept-source-agreements" -Wait -PassThru -WindowStyle Hidden
-        if ($p.ExitCode -eq 0) { Ok "Ditto clipboard manager installed (Ctrl+` opens it)" } else { Warn "Ditto install failed (winget exit $($p.ExitCode)) - Win+V clipboard history still works" }
-    } else { Ok "Ditto already installed" }
-} else { Warn "winget not available on this PC - Ditto skipped; Win+V clipboard history still works" }
 Ok "Win+H dictation and Win+V clipboard history allowed (user-setup turns them on per sign-in)"
 
 # ---------------------------------------------------------------- 7. WINDOWS UPDATE
