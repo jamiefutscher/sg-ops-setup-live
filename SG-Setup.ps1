@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v44"
+$ScriptVersion = "v45"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -395,6 +395,8 @@ Set-Reg $cp "SyncDisabled" 0
 Remove-Item "$cp\SyncTypesListDisabled" -Recurse -ErrorAction SilentlyContinue
 $i = 1; foreach ($t in "extensions","apps","themes","preferences","tabs","typedUrls","autofill","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
 Set-Reg $cp "BookmarkBarEnabled" 1
+# never show "Who's using Chrome?" - it swallows links other apps open (ShipStation Connect's "Log in with browser" landed on the start page instead of the login)
+Set-Reg $cp "ProfilePickerOnStartupAvailability" 1
 # sites staff need may open pop-up windows (ShipStation label/print windows, ShipStation Connect sign-in)
 Set-Reg "$cp\PopupsAllowedForUrls" "1" "[*.]shipstation.com" "String"
 Set-Reg "$cp\PopupsAllowedForUrls" "2" "[*.]finaleinventory.com" "String"
