@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v41"
+$ScriptVersion = "v42"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -101,6 +101,17 @@ if ($LeaveDomain) {
 }
 
 Start-Transcript -Path (Join-Path $Work "setup-$Stamp.log") -Force | Out-Null
+# any crash: save what we have plus the error, show it on screen, and copy it next to SG-Run (the USB) so it can be read on another computer
+trap {
+    $err = "CRASH: $($_.Exception.Message) at line $($_.InvocationInfo.ScriptLineNumber): $($_.InvocationInfo.Line.Trim())"
+    $Summary.Add($err)
+    New-Item -ItemType Directory -Path (Join-Path $Work "results") -Force | Out-Null
+    $Summary | Set-Content -Path (Join-Path $Work "results\$env:COMPUTERNAME.txt") -Encoding UTF8
+    if ($env:SG_RUNDIR) { try { New-Item -ItemType Directory -Path (Join-Path $env:SG_RUNDIR "results") -Force | Out-Null; $Summary | Set-Content (Join-Path $env:SG_RUNDIR "results\$env:COMPUTERNAME.txt") -Encoding UTF8 } catch {} }
+    Write-Host "`n$err" -ForegroundColor Red
+    Write-Host "Take a photo of this screen." -ForegroundColor Red
+    continue
+}
 
 function Step($msg)  { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Ok($msg)    { Write-Host "    OK  $msg" -ForegroundColor Green;  $Summary.Add("OK    $msg") }
