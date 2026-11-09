@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v47"
+$ScriptVersion = "v48"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -352,11 +352,20 @@ Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\EdgeUpdate" "UpdateDefault" 1   # kee
 foreach ($run in @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run","HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run")) {
     if (Test-Path $run) { Get-Item $run | Select-Object -ExpandProperty Property | Where-Object { $_ -like "*Edge*" } | ForEach-Object { Remove-ItemProperty -Path $run -Name $_ -ErrorAction SilentlyContinue } }
 }
-# Edge must still be able to START: a leftover "Debugger" redirect on these four programs made them silently do nothing, which broke
-# every app that opens a sign-in page or uses the built-in web view (CorelDRAW sign-in hung at "Continue in your browser").
-foreach ($exe in "msedge.exe","MicrosoftEdge.exe","MicrosoftEdgeUpdate.exe","msedgewebview2.exe") {
+# Edge the BROWSER is blocked on purpose (owner rule: staff use Chrome only). Only msedge.exe gets the block. The web view
+# (msedgewebview2.exe) and the updater must still start, or app sign-in windows break (CorelDRAW sign-in, ShipStation Connect).
+# Sign-in links open in Chrome because Chrome is the default browser (set below).
+foreach ($exe in "MicrosoftEdge.exe","MicrosoftEdgeUpdate.exe","msedgewebview2.exe") {
     $ifeo = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\$exe"
     if ((Get-ItemProperty $ifeo -Name Debugger -ErrorAction SilentlyContinue).Debugger) { Remove-ItemProperty -Path $ifeo -Name Debugger -Force -ErrorAction SilentlyContinue; Ok "Removed launch block on $exe" }
+}
+# Warehouse stations only (packing, basket, production). Design, engraving, printing and admin PCs keep Edge so CorelDRAW/Adobe sign-in is never affected.
+if ($Station -notmatch '^(Printing|Engraving|Design|Admin|Groundhog|Jefa|Jack|Hamster)') {
+    Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\msedge.exe" "Debugger" "$env:SystemRoot\System32\systray.exe" "String"
+    Get-Process msedge -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Ok "Edge browser blocked (web view and sign-in windows still work)"
+} elseif ((Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\msedge.exe" -Name Debugger -ErrorAction SilentlyContinue).Debugger) {
+    Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\msedge.exe" -Name Debugger -Force -ErrorAction SilentlyContinue; Ok "Edge left unblocked on this design/admin station"
 }
 # Same problem, second mechanism: Software Restriction "Disallowed" rules on Edge ("This program is blocked by group policy", 0x4EC).
 # They also block the WebView2 runtime (same folder prefix), and stopped ShipStation Connect's "Log in with browser". Remove every Disallowed rule that targets Edge.
