@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v46"
+$ScriptVersion = "v47"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -357,6 +357,15 @@ foreach ($run in @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run","HKLM:\
 foreach ($exe in "msedge.exe","MicrosoftEdge.exe","MicrosoftEdgeUpdate.exe","msedgewebview2.exe") {
     $ifeo = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\$exe"
     if ((Get-ItemProperty $ifeo -Name Debugger -ErrorAction SilentlyContinue).Debugger) { Remove-ItemProperty -Path $ifeo -Name Debugger -Force -ErrorAction SilentlyContinue; Ok "Removed launch block on $exe" }
+}
+# Same problem, second mechanism: Software Restriction "Disallowed" rules on Edge ("This program is blocked by group policy", 0x4EC).
+# They also block the WebView2 runtime (same folder prefix), and stopped ShipStation Connect's "Log in with browser". Remove every Disallowed rule that targets Edge.
+$srp = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Safer\CodeIdentifiers\0"
+if (Test-Path $srp) {
+    Get-ChildItem $srp -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+        $ip = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+        if ("$($ip.ItemData) $($ip.Description)" -match 'Edge|Browser_Broker') { Remove-Item $_.PSPath -Recurse -Force -ErrorAction SilentlyContinue; Ok "Removed program block: $($ip.Description)" }
+    }
 }
 # Chrome is the default browser for every user (links from CorelDRAW, ShipStation Connect, Slack etc. open in Chrome, not Edge)
 $assoc = @'
