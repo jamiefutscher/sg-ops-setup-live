@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v43"
+$ScriptVersion = "v44"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -390,7 +390,16 @@ Set-Reg $cp "BrowserGuestModeEnabled"            0
 # no sign-in questions: no "turn on sync?", no "continue as / keep your browsing data?" managed-profile dialog
 Set-Reg $cp "SigninInterceptionEnabled"          0
 Set-Reg $cp "ProfileSeparationSettings"          2      # 2 = disabled (never asks to make a separate managed profile)
-Set-Reg $cp "SyncDisabled"                       $(if ($AdminStation) { 0 } else { 1 })   # stations: no Chrome sync (sync is how 150 junk extensions arrived on Production02)
+# Chrome sync ON for bookmarks and saved passwords only (staff rely on the hello@ bookmarks). Extensions/apps/themes/settings never sync - that is how the junk extensions and the Yahoo search arrived.
+Set-Reg $cp "SyncDisabled" 0
+Remove-Item "$cp\SyncTypesListDisabled" -Recurse -ErrorAction SilentlyContinue
+$i = 1; foreach ($t in "extensions","apps","themes","preferences","tabs","typedUrls","autofill","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
+Set-Reg $cp "BookmarkBarEnabled" 1
+# sites staff need may open pop-up windows (ShipStation label/print windows, ShipStation Connect sign-in)
+Set-Reg "$cp\PopupsAllowedForUrls" "1" "[*.]shipstation.com" "String"
+Set-Reg "$cp\PopupsAllowedForUrls" "2" "[*.]finaleinventory.com" "String"
+Set-Reg "$cp\PopupsAllowedForUrls" "3" "[*.]spiritedgifts.com" "String"
+Set-Reg "$cp\PopupsAllowedForUrls" "4" "[*.]orderdesk.me" "String"
 Set-Reg $cp "BrowserThemeColor"                  "#FFFFFF" "String"
 # anything an adware installer wrote into Chrome policy that we don't manage gets cleared
 Remove-Item "HKCU:\SOFTWARE\Policies\Google\Chrome" -Recurse -ErrorAction SilentlyContinue
