@@ -21,6 +21,7 @@
 
 # ============================ EDIT THESE ONCE ============================
 $WebrootKey   = ""   # filled from secrets.txt (on the drive) or C:\SGSetup\secrets.txt - never stored in the public build
+$WebrootKeyNew = "BD56-ZARB-698C-C6AF-4AF0"   # second Webroot keycode (5 seats, bought Nov 10 2026). Owner approved keeping it in this file so the updater can install Webroot on PCs that have none.
 $AutoRestart  = $true   # $false = finish without restarting
 # =========================================================================
 
@@ -45,7 +46,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v57"
+$ScriptVersion = "v58"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -837,6 +838,8 @@ Ok "GCPW: sign-in allowed for $GcpwDomains, org token set"
 
 # ---------------------------------------------------------------- 6. WEBROOT
 Step "Webroot"
+# A PC with no Webroot yet gets the second keycode: the first keycode's 10 seats are all in use, so installs with it no longer register.
+if (-not (Test-Path "C:\Program Files\Webroot\WRSA.exe")) { $WebrootKey = $WebrootKeyNew }
 if (-not $WebrootKey -or $WebrootKey.Length -lt 20) {
     $wr = Join-Path $Work "wsainstall.exe"
     if ((Test-Path "C:\Program Files\Webroot\WRSA.exe")) { Ok "Webroot already installed" }

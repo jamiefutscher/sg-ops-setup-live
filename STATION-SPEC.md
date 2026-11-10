@@ -36,6 +36,11 @@ This file is the record of owner decisions for the warehouse PC build. Read it b
 - Barcode scanners: one or two on every PC, typing as a keyboard. SKUs are case-sensitive and leading zeros must survive. Caps Lock is forced off at sign-in. Scanner-side settings need the scanner models.
 - Print routing wanted (not built): cards and Drive documents to the Canon, shipping labels to the label printer, Finale product labels to the barcode printer, without staff switching printers. One PC also prints Avery labels on its own Zebra. The old method was the card extension plus Chrome kiosk printing; Jamie says it has not worked for 8 months and needs a proper kiosk setup, undecided until order flow is decided.
 
+## Decisions 2026-11-10 (morning)
+- Chrome settings now live in the Google Admin console for Warehouse Devices (20 settings plus the extension block and allow list), and Policy precedence there is set so the console overrules what this script writes. The script still writes its Chrome settings; removing them is the next build.
+- Webroot: 5 more seats bought on a second keycode. v58 installs Webroot with it on any PC that has none. Owner approved keeping that keycode in the script.
+- Gift-card printing (Ctrl+M) has not worked for 8 months; rebuild waits on the order-flow decision. Not a test step.
+
 ## Open
 - Arkscan driver staging is in v57 but untested on a PC (unpack switch /x and pnputil staging come from Seagull docs and research, medium confidence). Canon PIXMA: no script step; Windows Update is expected to install on USB plug-in; Canon does not support silent installs.
 - Page resizer found: "Page Sizer by Adam Natad", a Google Docs add-on on the hello@ account (also "Labelmaker"). It lives in Docs > Extensions, not in Chrome, and was never removed.
