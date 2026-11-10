@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v56"
+$ScriptVersion = "v57"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -945,6 +945,28 @@ elseif ($SsConnectUrl -match '^https?://') {
         else { Ok "ShipStation Connect installed - sign in once with the ShipStation user, then share its printers" }
     }
 } else { Warn "ShipStation Connect: no installer link in the build yet - install from ShipStation > Settings > Printing > Download" }
+
+# ---------------------------------------------------------------- 6b0. LABEL PRINTER DRIVER (Arkscan 2054A, every station)
+# The driver is staged in Windows so the printer installs by itself when its USB cable is plugged in. No printer is created or set as default here.
+# Canon PIXMA TS202/TS302 need no step: Windows Update installs their driver on plug-in.
+Step "Arkscan label printer driver"
+$arkUrl = "https://www.arkscan.com/images/products/2054A/2054A_Seagull_Printer_Driver_4BARCODE_7.4.3_M-1.exe"
+$arkHave = (Get-PrinterDriver -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*4BARCODE*" }) -or ((pnputil.exe /enum-drivers 2>$null | Out-String) -match "(?i)4barcode")
+if ($arkHave) { Ok "Arkscan (4BARCODE) driver already on this PC" }
+else {
+    $arkDir = Join-Path $Work "drivers\arkscan"; New-Item -ItemType Directory -Path $arkDir -Force | Out-Null
+    $arkExe = Join-Path $Work "drivers\arkscan-2054A.exe"
+    if (-not (Test-Path $arkExe)) { Get-File $arkUrl $arkExe | Out-Null }
+    if (Test-Path $arkExe) {
+        $p = Start-Process $arkExe -ArgumentList "/x `"$arkDir`"" -PassThru -WindowStyle Hidden   # /x = unpack only, no install wizard
+        if (-not $p.WaitForExit(120000)) { try { $p.Kill() } catch {}; Warn "Arkscan driver package did not unpack on its own within 2 minutes - stopped it" }
+        $arkInf = Get-ChildItem $arkDir -Filter *.inf -Recurse -ErrorAction SilentlyContinue
+        if ($arkInf) {
+            pnputil.exe /add-driver "$arkDir\*.inf" /subdirs /install | Out-Null
+            if ((pnputil.exe /enum-drivers 2>$null | Out-String) -match "(?i)4barcode") { Ok "Arkscan 2054A driver staged - the label printer installs itself when plugged in" } else { Warn "Arkscan driver files unpacked but Windows did not accept them" }
+        } else { Warn "Arkscan driver package unpacked no driver files - label printer driver not staged" }
+    } else { Warn "Arkscan driver download failed - label printer driver not staged" }
+}
 
 # ---------------------------------------------------------------- 6b. NETWORK PRINTERS (printers.txt)
 Step "Network printers"

@@ -37,8 +37,8 @@ This file is the record of owner decisions for the warehouse PC build. Read it b
 - Print routing wanted (not built): cards and Drive documents to the Canon, shipping labels to the label printer, Finale product labels to the barcode printer, without staff switching printers. One PC also prints Avery labels on its own Zebra. The old method was the card extension plus Chrome kiosk printing; Jamie says it has not worked for 8 months and needs a proper kiosk setup, undecided until order flow is decided.
 
 ## Open
-- The free page resizer Jamie used for printing 4x6 cards, 2.25x1.25 labels and 1.5 inch round labels from Google Drive documents: name not yet found. Must be free.
-- Silent install of the Arkscan and Canon drivers (not yet verified).
+- Arkscan driver staging is in v57 but untested on a PC (unpack switch /x and pnputil staging come from Seagull docs and research, medium confidence). Canon PIXMA: no script step; Windows Update is expected to install on USB plug-in; Canon does not support silent installs.
+- Page resizer found: "Page Sizer by Adam Natad", a Google Docs add-on on the hello@ account (also "Labelmaker"). It lives in Docs > Extensions, not in Chrome, and was never removed.
 - Speed check per PC, and a way to report results back.
 - Webroot seat count.
 - Why bookmarks do not show on the PCs although the account still holds them.
