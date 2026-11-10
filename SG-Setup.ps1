@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v48"
+$ScriptVersion = "v49"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -361,9 +361,26 @@ foreach ($exe in "MicrosoftEdge.exe","MicrosoftEdgeUpdate.exe","msedgewebview2.e
 }
 # Warehouse stations only (packing, basket, production). Design, engraving, printing and admin PCs keep Edge so CorelDRAW/Adobe sign-in is never affected.
 if ($Station -notmatch '^(Printing|Engraving|Design|Admin|Groundhog|Jefa|Jack|Hamster)') {
-    Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\msedge.exe" "Debugger" "$env:SystemRoot\System32\systray.exe" "String"
+    # Anything that still tries to open Edge (a sign-in link on a PC where Edge is the default browser, a PDF) is handed to Chrome instead of doing nothing.
+    $edgeVbs = "C:\SGSetup\edge-to-chrome.vbs"
+    if (-not (Test-Path "C:\SGSetup")) { New-Item -ItemType Directory -Path "C:\SGSetup" -Force | Out-Null }
+    @(
+        'Set sh = CreateObject("WScript.Shell")'
+        'Set fso = CreateObject("Scripting.FileSystemObject")'
+        'c = sh.ExpandEnvironmentStrings("%ProgramFiles%") & "\Google\Chrome\Application\chrome.exe"'
+        'If Not fso.FileExists(c) Then c = sh.ExpandEnvironmentStrings("%ProgramFiles(x86)%") & "\Google\Chrome\Application\chrome.exe"'
+        't = ""'
+        'For i = 1 To WScript.Arguments.Count - 1'
+        '  a = WScript.Arguments(i)'
+        '  If LCase(Left(a, 15)) = "microsoft-edge:" Then a = Mid(a, 16)'
+        '  l = LCase(a)'
+        '  If Left(l, 4) = "http" Or Left(l, 5) = "file:" Or Right(l, 4) = ".pdf" Or Right(l, 4) = ".htm" Or Right(l, 5) = ".html" Then t = a'
+        'Next'
+        'If t <> "" And fso.FileExists(c) Then sh.Run Chr(34) & c & Chr(34) & " " & Chr(34) & t & Chr(34), 1, False'
+    ) | Set-Content -Path $edgeVbs -Encoding ASCII -Force
+    Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\msedge.exe" "Debugger" "`"$env:SystemRoot\System32\wscript.exe`" //B //Nologo `"$edgeVbs`"" "String"
     Get-Process msedge -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Ok "Edge browser blocked (web view and sign-in windows still work)"
+    Ok "Edge browser blocked - links and PDFs that ask for Edge open in Chrome (web view and sign-in windows still work)"
 } elseif ((Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\msedge.exe" -Name Debugger -ErrorAction SilentlyContinue).Debugger) {
     Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\msedge.exe" -Name Debugger -Force -ErrorAction SilentlyContinue; Ok "Edge left unblocked on this design/admin station"
 }
