@@ -39,6 +39,7 @@ This file is the record of owner decisions for the warehouse PC build. Read it b
 ## Decisions 2026-11-10 (morning)
 - Chrome settings now live in the Google Admin console for Warehouse Devices (20 settings plus the extension block and allow list), and Policy precedence there is set so the console overrules what this script writes. The script still writes its Chrome settings; removing them is the next build.
 - Webroot: 5 more seats bought on a second keycode. v58 installs Webroot with it on any PC that has none. Owner approved keeping that keycode in the script.
+- Status report (v59): each run writes one line (build, PC name, serial, Webroot yes/no, SGAdmin yes/no, remote access yes/no, time) where the Admin console shows it per PC: Chrome browser > Managed browsers > the PC > Applied browser policies > SGStationStatus.
 - Gift-card printing (Ctrl+M) has not worked for 8 months; rebuild waits on the order-flow decision. Not a test step.
 
 ## Open

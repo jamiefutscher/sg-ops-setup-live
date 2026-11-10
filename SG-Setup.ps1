@@ -46,7 +46,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v58"
+$ScriptVersion = "v59"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -1190,6 +1190,16 @@ $tail = @("", "---- Chrome extensions found in user profiles ----") + $extInv + 
 ($header + $Summary + $tail) | Set-Content -Path $ResultFile -Encoding UTF8
 Set-Reg "HKLM:\SOFTWARE\SGSetup" "Version" $ScriptVersion "String"   # stamped only when the run got this far
 Set-Reg "HKLM:\SOFTWARE\SGSetup" "LastRun" (Get-Date -Format "yyyy-MM-dd HH:mm") "String"
+# Status line for the Google Admin console: Chrome reports every value under its policy key, so this one line shows up per PC in
+# Chrome browser > Managed browsers > (PC) > Applied browser policies. Chrome itself ignores the name. No secrets, no personal data.
+try {
+    $sgSerial = "$((Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue).SerialNumber)".Trim()
+    $sgWebroot = [int](Test-Path 'C:\Program Files\Webroot\WRSA.exe')
+    $sgAdmin = [int][bool](Get-LocalUser -Name 'SGAdmin' -ErrorAction SilentlyContinue)
+    $sgRemote = [int](Test-Path 'C:\ProgramData\Google\Chrome Remote Desktop\host.json')
+    $sgStatus = "build=$ScriptVersion; name=$env:COMPUTERNAME; serial=$sgSerial; webroot=$sgWebroot; sgadmin=$sgAdmin; remote=$sgRemote; ran=$(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+    Set-Reg "HKLM:\SOFTWARE\Policies\Google\Chrome" "SGStationStatus" $sgStatus "String"
+} catch { }
 Write-Host "`n===================== DONE =====================" -ForegroundColor Cyan
 $Summary | ForEach-Object { Write-Host "  $_" }
 Write-Host "`nResults saved to $ResultFile"
