@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v51"
+$ScriptVersion = "v52"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -75,6 +75,19 @@ if (-not $Silent) { Write-Host "Station name for this PC: Pack1 Pack2 Pack3 Pack
 $NewName = (Read-Host "Station name").Trim() -replace '\s','' } else { $NewName = "" }
 if ($NewName -and $NewName -notmatch '^[A-Za-z0-9-]{1,15}$') { Write-Host "Only letters, numbers, dashes, max 15 - keeping current name." -ForegroundColor Red; $NewName = "" }
 if ($NewName -ieq $env:COMPUTERNAME) { $NewName = "" }
+# Station names by serial number (names.txt: SERIAL | Name). Lets a PC take its proper name on its own, including on the nightly update.
+$RenamedByMap = $false; $RenameOk = $false
+$nmFile = Join-Path $ScriptDir "names.txt"
+if ((-not $NewName) -and (Test-Path $nmFile)) {
+    $serial = "$((Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue).SerialNumber)".Trim()
+    foreach ($ln in Get-Content $nmFile) {
+        $parts = (($ln -split '#')[0]) -split '\|'
+        if ($parts.Count -ge 2 -and $serial -and ($parts[0].Trim() -ieq $serial)) {
+            $mapped = $parts[1].Trim()
+            if ($mapped -match '^[A-Za-z0-9-]{1,15}$' -and $mapped -ine $env:COMPUTERNAME) { $NewName = $mapped; $RenamedByMap = $true }
+        }
+    }
+}
 $Station = if ($NewName) { $NewName } else { $env:COMPUTERNAME }
 $AdminStation = ($Station -like "Admin*") -or ($Station -match '^(Groundhog|Jefa|Jack|Hamster)$')   # Admin1, Admin2, Jamie's laptop...: looser rules (Chrome unlocked)
 $NeedsDropbox = $Station -match '^(Printing|Engraving|Admin|Groundhog|Jefa|Jack|Hamster)'   # design/engraving/admin stations use the Dropbox desktop app
@@ -190,7 +203,7 @@ if ($LeaveDomain) {
 } else { Ok "Not domain-joined - nothing to leave" }
 
 if ($NewName) {
-    try { Rename-Computer -NewName $NewName -Force -ErrorAction Stop; Ok "PC will be named $NewName after restart" ; $ResultFile = Join-Path $ResultsDir "$NewName.txt" }
+    try { Rename-Computer -NewName $NewName -Force -ErrorAction Stop; $RenameOk = $true; Ok "PC will be named $NewName after restart" ; $ResultFile = Join-Path $ResultsDir "$NewName.txt" }
     catch { Fail "Rename to $NewName failed: $($_.Exception.Message)" }
 }
 
@@ -722,16 +735,19 @@ New-Item -Path "HKCU:\Software\Microsoft\Clipboard" -Force | Out-Null
 New-ItemProperty -Path "HKCU:\Software\Microsoft\Clipboard" -Name "EnableClipboardHistory" -Value 1 -PropertyType DWord -Force | Out-Null
 New-Item -Path "HKCU:\Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy" -Force | Out-Null
 New-ItemProperty -Path "HKCU:\Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy" -Name "HasAccepted" -Value 1 -PropertyType DWord -Force | Out-Null
-# default printer: never auto-switch; Gabriel if present, else this station's Card printer
+# default printer: Windows never auto-switches it. No default is assigned here (owner order Nov 10: printers get assigned later, station by station).
 New-Item -Path "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" -Force | Out-Null
 New-ItemProperty -Path "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" -Name "LegacyDefaultPrinterMode" -Value 1 -PropertyType DWord -Force | Out-Null
-$want = @("Gabriel", "$env:COMPUTERNAME-Card") | Where-Object { Get-Printer -Name $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
-if ($want) { (New-Object -ComObject WScript.Network).SetDefaultPrinter($want) }
 # same look everywhere: Windows light mode, accent from wallpaper off
 $pz = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"; New-Item -Path $pz -Force | Out-Null
 New-ItemProperty -Path $pz -Name "AppsUseLightTheme" -Value 1 -PropertyType DWord -Force | Out-Null
 New-ItemProperty -Path $pz -Name "SystemUsesLightTheme" -Value 1 -PropertyType DWord -Force | Out-Null
 New-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "AutoColorization" -Value 0 -PropertyType DWord -Force | Out-Null
+# same taskbar everywhere: Start and icons in the middle, search box shown
+New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarAl" -Value 1 -PropertyType DWord -Force | Out-Null
+New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search" -Name "SearchboxTaskbarMode" -Value 2 -PropertyType DWord -Force | Out-Null
+# Night light off: clearing its saved state puts it back to the Windows default (off, no schedule), so the screen stays bright all day
+Get-ChildItem "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current" -ErrorAction SilentlyContinue | Where-Object { $_.PSChildName -like "*bluelightreduction*" } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 # no "Let's finish setting up your device" / Microsoft-account nag for this user
 New-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement" -Force | Out-Null
 New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement" -Name "ScoobeSystemSettingEnabled" -Value 0 -PropertyType DWord -Force | Out-Null
@@ -1141,6 +1157,8 @@ $Summary | ForEach-Object { Write-Host "  $_" }
 Write-Host "`nResults saved to $ResultFile"
 Write-Host "Full log:         $Work\setup-$Stamp.log"
 
+# A rename picked up on the nightly update only takes effect after a restart: do it once, with a 5 minute warning on screen.
+if ($Silent -and $RenamedByMap -and $RenameOk) { shutdown.exe /r /t 300 /c "This PC is being renamed to $NewName and will restart in 5 minutes. Save your work." | Out-Null }
 if ($AutoRestart) {
     Write-Host "`nRestarting in 30 seconds. After restart: bottom-left click 'Other user' > 'Sign in with your work account' > hello@thinkliquor.com" -ForegroundColor Yellow
     if ($LeaveDomain) { Write-Host "Backup local sign-in if Google fails: user '$LocalAdminName' with the password you just set." -ForegroundColor Yellow }

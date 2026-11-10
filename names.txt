@@ -1,0 +1,7 @@
+# Station name for each PC, matched by its serial number:  SERIAL | Name
+# A PC whose serial is listed renames itself on the next update and restarts once.
+7PWF0K4 | Engraving1            # Dell tower
+MJ0G44E0 | Engraving2           # Lenovo ThinkCentre
+8CQ20803JC | Production2        # HP all-in-one
+C46R903 | Printing2             # Dell
+JB20BP230724B0871 | Pack4       # mini PC
