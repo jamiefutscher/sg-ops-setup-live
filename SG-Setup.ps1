@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v53"
+$ScriptVersion = "v54"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -456,10 +456,10 @@ Set-Reg $cp "BrowserGuestModeEnabled"            0
 # no sign-in questions: no "turn on sync?", no "continue as / keep your browsing data?" managed-profile dialog
 Set-Reg $cp "SigninInterceptionEnabled"          0
 Set-Reg $cp "ProfileSeparationSettings"          2      # 2 = disabled (never asks to make a separate managed profile)
-# Chrome sync ON for bookmarks and saved passwords only. Extensions do not sync: allowed ones are listed in extensions-allow.txt.
+# Chrome sync ON for bookmarks, saved passwords, history and autofill (staff rely on them from the hello@ account). Extensions do not sync: allowed ones are listed in extensions-allow.txt.
 Set-Reg $cp "SyncDisabled" 0
 Remove-Item "$cp\SyncTypesListDisabled" -Recurse -ErrorAction SilentlyContinue
-$i = 1; foreach ($t in "extensions","apps","themes","preferences","tabs","typedUrls","autofill","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
+$i = 1; foreach ($t in "extensions","apps","themes","preferences","tabs","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
 Set-Reg $cp "BookmarkBarEnabled" 1
 # never show "Who's using Chrome?" - it swallows links other apps open (ShipStation Connect's "Log in with browser" landed on the start page instead of the login)
 Set-Reg $cp "ProfilePickerOnStartupAvailability" 1
@@ -920,6 +920,17 @@ elseif (Get-Command winget -ErrorAction SilentlyContinue) {
     if ($p.ExitCode -eq 0) { Ok "Slack installed (machine-wide) - staff sign in once" } else { Warn "Slack install failed (winget exit $($p.ExitCode))" }
 } else { Warn "winget not available - Slack skipped" }
 
+# ---------------------------------------------------------------- 6a5b. DITTO (clipboard) AND CCLEANER (every station, owner order Nov 10)
+Step "Ditto and CCleaner"
+foreach ($app in @(@{ Name = "Ditto"; Id = "Ditto.Ditto" }, @{ Name = "CCleaner"; Id = "Piriform.CCleaner" })) {
+    $have = Get-ItemProperty $uninstKeys -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like "$($app.Name)*" }
+    if ($have) { Ok "$($app.Name) already installed" }
+    elseif (Get-Command winget -ErrorAction SilentlyContinue) {
+        $p = Start-Process winget -ArgumentList "install --id $($app.Id) -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity" -Wait -PassThru -WindowStyle Hidden
+        if ($p.ExitCode -eq 0) { Ok "$($app.Name) installed" } else { Warn "$($app.Name) install failed (winget exit $($p.ExitCode))" }
+    } else { Warn "winget not available - $($app.Name) skipped (installs on the next manual SG-Run)" }
+}
+
 # ---------------------------------------------------------------- 6a6. SHIPSTATION CONNECT (every station with a printer)
 Step "ShipStation Connect"
 $ssInstalled = (Get-ItemProperty $uninstKeys -ErrorAction SilentlyContinue | Where-Object DisplayName -like "*ShipStation Connect*") -or (Get-ChildItem "C:\Users\*\AppData\Local\Programs\ShipStation Connect\*.exe","C:\Program Files\ShipStation Connect\*.exe" -ErrorAction SilentlyContinue)
@@ -1127,7 +1138,7 @@ try {
 Step "Power"
 powercfg /change standby-timeout-ac 0      | Out-Null
 powercfg /change hibernate-timeout-ac 0    | Out-Null
-powercfg /change monitor-timeout-ac 30     | Out-Null
+powercfg /change monitor-timeout-ac 60     | Out-Null
 powercfg /hibernate off                    | Out-Null
 # no sign-in prompt when the screen wakes - staff sign in once at boot
 powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_NONE CONSOLELOCK 0 | Out-Null
