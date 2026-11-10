@@ -1,2 +1,13 @@
 # Chrome extensions allowed on warehouse stations, one ID per line (32 letters). Everything else stays blocked.
 # Chrome Remote Desktop and the SG Card Printer are always allowed and do not need to be listed.
+# Source: the 11 extensions saved in the hello@thinkliquor.com account (export of Nov 10 2026). Approved by Jamie: unblock what the stations already had.
+dhdgffkkebhmkfjojejmpbldmpobfkfo   # Tampermonkey (gift-message auto-print script)
+jnfmjlhbamkkjknkdlhjkijncdhoeahn   # Linnworks - Gift Automation (loaded by hand)
+lggdbpblkekjjbobadliahffoaobaknh   # Tango (training guides)
+fjhiihinnfloeepbkkidlhkfnbnjdaod   # QR Code Maker
+agionbommeaifngbhincahgmoflcikhm   # Image downloader - Imageye
+nkokmeaibnajheohncaamjggkanfbphi   # Save Image As PNG
+gbkeegbaiigmenfmjfclcdgdpimamgkj   # Office Editing for Docs, Sheets & Slides (Google)
+ghbmnnjooekpmoecnnnilnnbdlolhkhi   # Google Docs Offline (Google)
+mgchemcfldkcnpnicgnghomghlcahpgj   # unknown, no longer in the Chrome store (label resizer candidate)
+jfdmjjaaabgoamceejigdchflioaljha   # unknown, no longer in the Chrome store (label resizer candidate)

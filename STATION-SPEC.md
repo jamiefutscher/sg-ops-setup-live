@@ -26,7 +26,18 @@ This file is the record of owner decisions for the warehouse PC build. Read it b
 - Card printer Chrome extension: left alone, not relied on. Order flow and kiosk printing are undecided.
 - ShipStation Connect: installed, nobody signs in until Jamie decides new vs existing account.
 
+## Decisions 2026-11-10 (late)
+- Extensions: the 11 from the hello@ account are allowed (extensions-allow.txt). Junk set on Production2 stays blocked; remove it for good once the allow list is confirmed working.
+- AntiMicro: on every PC, left as is. Whether it stays as the method is undecided; do not block or promote it.
+- ActivTrak: not wanted. Removed if found.
+- Webroot and CCleaner: on all stations.
+- Canon PIXMA by station: TS302 = Pack3, Production2. TS302a = Printing2, Basket1. TS202 = Pack1, Pack2. Drivers go on all.
+- Label printers: Arkscan 2054A. Driver: https://www.arkscan.com/images/products/2054A/2054A_Seagull_Printer_Driver_4BARCODE_7.4.3_M-1.exe (download page https://www.arkscan.com/technical-support/download).
+- Barcode scanners: one or two on every PC, typing as a keyboard. SKUs are case-sensitive and leading zeros must survive. Caps Lock is forced off at sign-in. Scanner-side settings need the scanner models.
+- Print routing wanted (not built): cards and Drive documents to the Canon, shipping labels to the label printer, Finale product labels to the barcode printer, without staff switching printers. One PC also prints Avery labels on its own Zebra. The old method was the card extension plus Chrome kiosk printing; Jamie says it has not worked for 8 months and needs a proper kiosk setup, undecided until order flow is decided.
+
 ## Open
+- Silent install of the Arkscan and Canon drivers (not yet verified).
 - Speed check per PC, and a way to report results back.
 - Webroot seat count.
 - Why bookmarks do not show on the PCs although the account still holds them.

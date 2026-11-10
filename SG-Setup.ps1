@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v54"
+$ScriptVersion = "v55"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -456,10 +456,10 @@ Set-Reg $cp "BrowserGuestModeEnabled"            0
 # no sign-in questions: no "turn on sync?", no "continue as / keep your browsing data?" managed-profile dialog
 Set-Reg $cp "SigninInterceptionEnabled"          0
 Set-Reg $cp "ProfileSeparationSettings"          2      # 2 = disabled (never asks to make a separate managed profile)
-# Chrome sync ON for bookmarks, saved passwords, history and autofill (staff rely on them from the hello@ account). Extensions do not sync: allowed ones are listed in extensions-allow.txt.
+# Chrome sync ON for bookmarks, saved passwords, history and autofill (staff rely on them from the hello@ account). Extensions sync too, but only the ones on the allow list (extensions-allow.txt) can run; everything else stays blocked.
 Set-Reg $cp "SyncDisabled" 0
 Remove-Item "$cp\SyncTypesListDisabled" -Recurse -ErrorAction SilentlyContinue
-$i = 1; foreach ($t in "extensions","apps","themes","preferences","tabs","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
+$i = 1; foreach ($t in "apps","themes","preferences","tabs","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
 Set-Reg $cp "BookmarkBarEnabled" 1
 # never show "Who's using Chrome?" - it swallows links other apps open (ShipStation Connect's "Log in with browser" landed on the start page instead of the login)
 Set-Reg $cp "ProfilePickerOnStartupAvailability" 1
@@ -763,6 +763,8 @@ if (Test-Path $chrome) { Start-Process $chrome -ArgumentList "--make-default-bro
 Get-Process SystemSettings -ErrorAction SilentlyContinue | Stop-Process -Force
 # Num Lock off right now too, not only at next sign-in
 if ([Console]::NumberLock) { (New-Object -ComObject WScript.Shell).SendKeys("{NUMLOCK}") }
+# Caps Lock off too: the barcode scanners type like a keyboard, so Caps Lock flips the case of every SKU they scan
+if ([Console]::CapsLock) { (New-Object -ComObject WScript.Shell).SendKeys("{CAPSLOCK}") }
 '@
 Set-Content -Path (Join-Path $Work "user-setup.ps1") -Value $userScript -Encoding UTF8
 # machine-wide: Windows tips, "finish setting up" and Microsoft-account suggestions off
@@ -773,7 +775,7 @@ Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" "Disab
 $as = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{7A1E5D2C-5601-4F2B-9C3D-0000000000A1}"
 Set-Reg $as "(Default)"  "Spirited Gifts user setup" "String"
 Set-Reg $as "StubPath"   "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\SGSetup\user-setup.ps1" "String"
-Set-Reg $as "Version"    "1,0,0,13" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
+Set-Reg $as "Version"    "1,0,0,14" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
 Set-Reg $as "IsInstalled" 1
 Ok "Per-user setup registered for next sign-in (taskbar reset to Chrome + Explorer, wallpaper, widgets off, Chrome default prompt)"
 

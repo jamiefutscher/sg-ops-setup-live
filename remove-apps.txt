@@ -6,3 +6,4 @@
 Mozilla Firefox
 AnyDesk
 OKIOCAM
+ActivTrak
