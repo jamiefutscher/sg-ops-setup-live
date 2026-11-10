@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v49"
+$ScriptVersion = "v50"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -443,10 +443,10 @@ Set-Reg $cp "BrowserGuestModeEnabled"            0
 # no sign-in questions: no "turn on sync?", no "continue as / keep your browsing data?" managed-profile dialog
 Set-Reg $cp "SigninInterceptionEnabled"          0
 Set-Reg $cp "ProfileSeparationSettings"          2      # 2 = disabled (never asks to make a separate managed profile)
-# Chrome sync ON for bookmarks and saved passwords only (staff rely on the hello@ bookmarks). Extensions/apps/themes/settings never sync - that is how the junk extensions and the Yahoo search arrived.
+# Chrome sync ON for bookmarks, saved passwords and extensions (staff rely on the hello@ bookmarks and extensions). Apps/themes/settings do not sync.
 Set-Reg $cp "SyncDisabled" 0
 Remove-Item "$cp\SyncTypesListDisabled" -Recurse -ErrorAction SilentlyContinue
-$i = 1; foreach ($t in "extensions","apps","themes","preferences","tabs","typedUrls","autofill","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
+$i = 1; foreach ($t in "apps","themes","preferences","tabs","typedUrls","autofill","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
 Set-Reg $cp "BookmarkBarEnabled" 1
 # never show "Who's using Chrome?" - it swallows links other apps open (ShipStation Connect's "Log in with browser" landed on the start page instead of the login)
 Set-Reg $cp "ProfilePickerOnStartupAvailability" 1
@@ -481,10 +481,11 @@ if ($AdminStation) {
     Set-Reg "$cp\URLBlocklist" "1" "youtube.com" "String"
     Set-Reg "$cp\URLBlocklist" "2" "youtu.be" "String"
     Set-Reg "$cp\URLBlocklist" "3" "m.youtube.com" "String"
-    Set-Reg "$cp\ExtensionInstallBlocklist" "1" "*" "String"     # no extensions unless Jamie approves (add IDs to ExtensionInstallAllowlist/Forcelist)
+    # Extensions are NOT blocked (owner order Nov 10): the stations rely on their existing extensions (label resizer etc.). Which ones stay is decided in the Google Admin console, not here.
+    Remove-Item "$cp\ExtensionInstallBlocklist" -Recurse -ErrorAction SilentlyContinue
     Set-Reg "$cp\ExtensionInstallAllowlist" "1" $CrdExtId "String"   # Chrome Remote Desktop and the Card Printer are the allowed extensions
     Set-Reg "$cp\ExtensionInstallAllowlist" "2" $CardExtId "String"
-    Ok "Chrome enrolled in Chrome Enterprise Core (Warehouse Devices), locked down, YouTube blocked, extension installs blocked"
+    Ok "Chrome enrolled in Chrome Enterprise Core (Warehouse Devices), locked down, YouTube blocked, extensions allowed"
 }
 
 # ---------------------------------------------------------------- 2b. CHROME REMOTE DESKTOP (done early so the PC can be taken over remotely while the rest runs)
@@ -1126,7 +1127,7 @@ $extInv = @(Get-ChildItem "C:\Users\*\AppData\Local\Google\Chrome\User Data\*\Ex
     $nm = try { (Get-Content $mf.FullName -Raw | ConvertFrom-Json).name } catch { "?" }
     "$($_.Name)  $nm  ($(($_.FullName -split '\\')[2]))"
 } | Sort-Object -Unique)
-$tail = @("", "---- Chrome extensions found in user profiles (blocked unless allowlisted) ----") + $extInv + @("", "---- Printers on this PC ----") + $printerList + @("", "---- Installed programs (for remove-apps.txt) ----") + $inventory + @("", "---- Store apps ----") + $storeApps
+$tail = @("", "---- Chrome extensions found in user profiles ----") + $extInv + @("", "---- Printers on this PC ----") + $printerList + @("", "---- Installed programs (for remove-apps.txt) ----") + $inventory + @("", "---- Store apps ----") + $storeApps
 ($header + $Summary + $tail) | Set-Content -Path $ResultFile -Encoding UTF8
 Set-Reg "HKLM:\SOFTWARE\SGSetup" "Version" $ScriptVersion "String"   # stamped only when the run got this far
 Set-Reg "HKLM:\SOFTWARE\SGSetup" "LastRun" (Get-Date -Format "yyyy-MM-dd HH:mm") "String"
