@@ -27,7 +27,7 @@ This file is the record of owner decisions for the warehouse PC build. Read it b
 - ShipStation Connect: installed, nobody signs in until Jamie decides new vs existing account.
 
 ## Decisions 2026-11-10 (late)
-- Extensions: the 11 from the hello@ account are allowed (extensions-allow.txt). Junk set on Production2 stays blocked; remove it for good once the allow list is confirmed working.
+- Extensions allowed: Tampermonkey, Tango, Imageye, Save Image As PNG, and two unknown delisted ones kept as label-resizer candidates. NOT allowed: Linnworks Gift Automation, QR Code Maker, Office Editing, Google Docs Offline. Junk set on Production2 stays blocked; remove it for good once the allow list is confirmed working.
 - AntiMicro: on every PC, left as is. Whether it stays as the method is undecided; do not block or promote it.
 - ActivTrak: not wanted. Removed if found.
 - Webroot and CCleaner: on all stations.
@@ -37,6 +37,7 @@ This file is the record of owner decisions for the warehouse PC build. Read it b
 - Print routing wanted (not built): cards and Drive documents to the Canon, shipping labels to the label printer, Finale product labels to the barcode printer, without staff switching printers. One PC also prints Avery labels on its own Zebra. The old method was the card extension plus Chrome kiosk printing; Jamie says it has not worked for 8 months and needs a proper kiosk setup, undecided until order flow is decided.
 
 ## Open
+- The free page resizer Jamie used for printing 4x6 cards, 2.25x1.25 labels and 1.5 inch round labels from Google Drive documents: name not yet found. Must be free.
 - Silent install of the Arkscan and Canon drivers (not yet verified).
 - Speed check per PC, and a way to report results back.
 - Webroot seat count.

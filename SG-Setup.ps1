@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v55"
+$ScriptVersion = "v56"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
