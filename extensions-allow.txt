@@ -1,0 +1,2 @@
+# Chrome extensions allowed on warehouse stations, one ID per line (32 letters). Everything else stays blocked.
+# Chrome Remote Desktop and the SG Card Printer are always allowed and do not need to be listed.

@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v50"
+$ScriptVersion = "v51"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -443,10 +443,10 @@ Set-Reg $cp "BrowserGuestModeEnabled"            0
 # no sign-in questions: no "turn on sync?", no "continue as / keep your browsing data?" managed-profile dialog
 Set-Reg $cp "SigninInterceptionEnabled"          0
 Set-Reg $cp "ProfileSeparationSettings"          2      # 2 = disabled (never asks to make a separate managed profile)
-# Chrome sync ON for bookmarks, saved passwords and extensions (staff rely on the hello@ bookmarks and extensions). Apps/themes/settings do not sync.
+# Chrome sync ON for bookmarks and saved passwords only. Extensions do not sync: allowed ones are listed in extensions-allow.txt.
 Set-Reg $cp "SyncDisabled" 0
 Remove-Item "$cp\SyncTypesListDisabled" -Recurse -ErrorAction SilentlyContinue
-$i = 1; foreach ($t in "apps","themes","preferences","tabs","typedUrls","autofill","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
+$i = 1; foreach ($t in "extensions","apps","themes","preferences","tabs","typedUrls","autofill","readingList","savedTabGroups","wifiConfigurations") { Set-Reg "$cp\SyncTypesListDisabled" "$i" $t "String"; $i++ }
 Set-Reg $cp "BookmarkBarEnabled" 1
 # never show "Who's using Chrome?" - it swallows links other apps open (ShipStation Connect's "Log in with browser" landed on the start page instead of the login)
 Set-Reg $cp "ProfilePickerOnStartupAvailability" 1
@@ -481,11 +481,16 @@ if ($AdminStation) {
     Set-Reg "$cp\URLBlocklist" "1" "youtube.com" "String"
     Set-Reg "$cp\URLBlocklist" "2" "youtu.be" "String"
     Set-Reg "$cp\URLBlocklist" "3" "m.youtube.com" "String"
-    # Extensions are NOT blocked (owner order Nov 10): the stations rely on their existing extensions (label resizer etc.). Which ones stay is decided in the Google Admin console, not here.
-    Remove-Item "$cp\ExtensionInstallBlocklist" -Recurse -ErrorAction SilentlyContinue
+    # Every extension stays blocked except the ones listed in extensions-allow.txt (one extension ID per line, # for notes).
+    # The block is what keeps the junk extensions on Production2 switched off. Wanted extensions (label resizer etc.) are added to that file by ID.
+    Set-Reg "$cp\ExtensionInstallBlocklist" "1" "*" "String"
+    Remove-Item "$cp\ExtensionInstallAllowlist" -Recurse -ErrorAction SilentlyContinue
+    $allowFile = Join-Path $ScriptDir "extensions-allow.txt"; $ai = 3
+    if (Test-Path $allowFile) { foreach ($ln in Get-Content $allowFile) { $id = ($ln -split '#')[0].Trim(); if ($id -match '^[a-p]{32}$') { Set-Reg "$cp\ExtensionInstallAllowlist" "$ai" $id "String"; $ai++ } } }
+    if ($ai -gt 3) { Ok "Extra extensions allowed from extensions-allow.txt: $($ai - 3)" }
     Set-Reg "$cp\ExtensionInstallAllowlist" "1" $CrdExtId "String"   # Chrome Remote Desktop and the Card Printer are the allowed extensions
     Set-Reg "$cp\ExtensionInstallAllowlist" "2" $CardExtId "String"
-    Ok "Chrome enrolled in Chrome Enterprise Core (Warehouse Devices), locked down, YouTube blocked, extensions allowed"
+    Ok "Chrome enrolled in Chrome Enterprise Core (Warehouse Devices), locked down, YouTube blocked, extensions blocked except the allow list"
 }
 
 # ---------------------------------------------------------------- 2b. CHROME REMOTE DESKTOP (done early so the PC can be taken over remotely while the rest runs)

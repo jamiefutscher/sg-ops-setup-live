@@ -10,3 +10,4 @@ avatar-info.png
 avatar-admin.png
 ext/sg-card-printer.crx
 ext/update.xml
+extensions-allow.txt
