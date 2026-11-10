@@ -45,7 +45,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v52"
+$ScriptVersion = "v53"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -773,7 +773,7 @@ Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" "Disab
 $as = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{7A1E5D2C-5601-4F2B-9C3D-0000000000A1}"
 Set-Reg $as "(Default)"  "Spirited Gifts user setup" "String"
 Set-Reg $as "StubPath"   "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\SGSetup\user-setup.ps1" "String"
-Set-Reg $as "Version"    "1,0,0,12" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
+Set-Reg $as "Version"    "1,0,0,13" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
 Set-Reg $as "IsInstalled" 1
 Ok "Per-user setup registered for next sign-in (taskbar reset to Chrome + Explorer, wallpaper, widgets off, Chrome default prompt)"
 
