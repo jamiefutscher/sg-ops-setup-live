@@ -46,7 +46,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v59"
+$ScriptVersion = "v60"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -141,6 +141,64 @@ function Get-File($Url, $Dest) {
         if ((Get-Item $Dest).Length -lt 100KB) { throw "download too small" }
         return $true
     } catch { Fail "Download failed: $Url ($($_.Exception.Message))"; return $false }
+}
+
+# ---------------------------------------------------------------- 0. v60: ROLL BACK ENGRAVING2, HOLD EVERYTHING ELSE (owner order Nov 17 2026)
+# Owner decision: engraving/design PCs go back to their original login and setup and are rebuilt later, after the
+# hello@thinkliquor.com warehouse stations are settled. v60 therefore does two things on the nightly (silent) update and nothing else:
+#   - Engraving2 (Lenovo ThinkCentre, serial MJ0G44E0): undo what this script restricted, then put the PC on hold.
+#   - Every other PC: record the version and stop. Nothing is changed.
+# A PC on hold (HKLM\SOFTWARE\SGSetup Hold=1) is skipped by every later nightly update until the hold is removed by hand.
+# A manual run from the drive is not affected by this block.
+$FixSerial  = "MJ0G44E0"
+$ThisSerial = "$((Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue).SerialNumber)".Trim()
+$OnHold     = ((Get-ItemProperty "HKLM:\SOFTWARE\SGSetup" -ErrorAction SilentlyContinue).Hold -eq 1)
+if ($Silent) {
+    if (($ThisSerial -ieq $FixSerial) -and -not $OnHold) {
+        $rb = New-Object System.Collections.Generic.List[string]
+        $rb.Add("Engraving2 roll-back - SG-Setup $ScriptVersion - $(Get-Date -Format 'yyyy-MM-dd HH:mm')"); $rb.Add("")
+        # 1. Logins: v39-v59 switched off every local login named hello* on engraving/design PCs and hid it. Put them back.
+        $rb.Add("LOGINS PUT BACK:")
+        $back = 0
+        foreach ($lu in Get-LocalUser -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "hello*" }) {
+            Enable-LocalUser -Name $lu.Name -ErrorAction SilentlyContinue
+            Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" -Name $lu.Name -Force -ErrorAction SilentlyContinue
+            $rb.Add("  $($lu.Name) - switched on and back on the sign-in screen"); $back++
+        }
+        if ($back -eq 0) { $rb.Add("  none found named hello* - the old login was a different kind (see the list below)") }
+        # 2. Chrome: remove every Chrome setting this script wrote on the PC, except the enrollment in the Google Admin console
+        #    and the Chrome Remote Desktop extension. Settings sent from the Admin console are NOT removed by this - they are changed in the console.
+        $cpk = "HKLM:\SOFTWARE\Policies\Google\Chrome"
+        $keepVals = @("CloudManagementEnrollmentToken","CloudManagementEnrollmentMandatory")
+        if (Test-Path $cpk) {
+            $n = 0
+            foreach ($v in (Get-Item $cpk).Property) { if ($keepVals -notcontains $v) { Remove-ItemProperty -Path $cpk -Name $v -Force -ErrorAction SilentlyContinue; $n++ } }
+            foreach ($sub in Get-ChildItem $cpk -ErrorAction SilentlyContinue) { if ($sub.PSChildName -ne "ExtensionInstallForcelist") { Remove-Item $sub.PSPath -Recurse -Force -ErrorAction SilentlyContinue; $n++ } }
+            Remove-ItemProperty -Path "$cpk\ExtensionInstallForcelist" -Name "2" -Force -ErrorAction SilentlyContinue   # card printer extension (warehouse only)
+            $rb.Add(""); $rb.Add("CHROME: $n settings written by the setup script were removed from this PC (extension block, YouTube block, incognito and developer tools block, start page, bookmarks, search and sync rules). Chrome stays enrolled in the Admin console.")
+        }
+        # 3. What is on this PC: logins and profile folders, so the owner can see where the old desktop and documents are
+        $rb.Add(""); $rb.Add("LOGINS ON THIS PC (name, on or off, last sign-in):")
+        Get-LocalUser -ErrorAction SilentlyContinue | ForEach-Object { $rb.Add("  $($_.Name)  -  $(if ($_.Enabled) { 'on' } else { 'OFF' })  -  last sign-in: $($_.LastLogon)") }
+        $rb.Add(""); $rb.Add("PROFILE FOLDERS IN C:\Users (old files live in these: last changed, items on the Desktop, items in Documents):")
+        Get-ChildItem "C:\Users" -Directory -ErrorAction SilentlyContinue | Where-Object { @("Public","Default","Default User","All Users") -notcontains $_.Name } | ForEach-Object {
+            $d = @(Get-ChildItem (Join-Path $_.FullName "Desktop") -ErrorAction SilentlyContinue).Count
+            $m = @(Get-ChildItem (Join-Path $_.FullName "Documents") -ErrorAction SilentlyContinue).Count
+            $rb.Add("  $($_.FullName)  -  last changed $($_.LastWriteTime.ToString('yyyy-MM-dd'))  -  Desktop: $d  -  Documents: $m")
+        }
+        $csNow = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
+        $rb.Add(""); $rb.Add("DOMAIN: $(if ($csNow.PartOfDomain) { $csNow.Domain } else { 'none (workgroup)' })")
+        $rb.Add(""); $rb.Add("NOT UNDONE (cannot be put back by a script): programs the setup uninstalled (Firefox, AnyDesk, OKIOCAM, ActivTrak, manufacturer extras), the taskbar and theme changes, and the SGAdmin account.")
+        $rb.Add("This PC is now on hold: the nightly update will not change it again.")
+        New-Item -ItemType Directory -Path (Join-Path $Work "results") -Force | Out-Null
+        $rb | Set-Content -Path (Join-Path $Work "results\Engraving2-rollback.txt") -Encoding UTF8
+        try { $rb | Set-Content -Path "C:\Users\Public\Desktop\Engraving2 roll-back report.txt" -Encoding UTF8 } catch {}
+        Set-Reg "HKLM:\SOFTWARE\SGSetup" "Hold" 1
+    }
+    Set-Reg "HKLM:\SOFTWARE\SGSetup" "Version" $ScriptVersion "String"
+    Set-Reg "HKLM:\SOFTWARE\SGSetup" "LastRun" (Get-Date -Format "yyyy-MM-dd HH:mm") "String"
+    try { Stop-Transcript | Out-Null } catch {}
+    exit 0
 }
 
 # ---------------------------------------------------------------- 1. SYSTEM INFO

@@ -8,6 +8,14 @@ This file is the record of owner decisions for the warehouse PC build. Read it b
 - No questions during setup. Jamie only types the station name.
 - Changes are published as soon as they are made. PCs pick them up at 3:30 AM or 10 minutes after a restart.
 
+## Decisions 2026-11-17
+- The script approach was wrong for the goal: Workspace is to manage the PCs. No new features go into the script. Handoff document written for moving management into the Admin console.
+- Order of work: settle the hello@thinkliquor.com warehouse stations first. Engraving and design PCs go back to their original login and setup and are rebuilt later.
+- v60 rolls back Engraving2 only (serial MJ0G44E0) on the nightly update: every hello* login that v39-v59 switched off is put back, every Chrome setting the script wrote on the PC is removed (enrollment and Chrome Remote Desktop stay), a roll-back report is left on the shared desktop, and the PC is put on hold (HKLM\SOFTWARE\SGSetup Hold=1) so later updates skip it. Not undone: uninstalled programs, taskbar and theme changes, SGAdmin.
+- On every other PC the v60 nightly update records the version and changes nothing.
+- Engraving1 is in use. Do not change it until Jamie decides, after Engraving2 is checked. Back up its current settings first.
+- Design1 and Printing3 never ran the setup, so there is nothing to roll back. Printing2 ran only the Nov 4 build; if it does receive the update it records v60 and changes nothing.
+
 ## Station groups
 - Warehouse stations (sign in as hello@thinkliquor.com): Pack1-4, Basket1-2, Production2. All identical.
 - Design stations (sign in as info@spiritedgifts.com): Engraving1 (Dell tower), Engraving2 (Lenovo ThinkCentre), Printing2, Printing3, Design1. Different rules: Edge stays, Dropbox and fonts needed, Corel licensing open. Do not touch Printing3 or Reyshine's PC.
