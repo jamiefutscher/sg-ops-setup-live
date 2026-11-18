@@ -46,7 +46,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v61"
+$ScriptVersion = "v62"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -150,7 +150,7 @@ function Get-File($Url, $Dest) {
 #   - Every other PC: record the version and stop. Nothing is changed.
 # A PC on hold (HKLM\SOFTWARE\SGSetup Hold=1) is skipped by every later nightly update until the hold is removed by hand.
 # A manual run from the drive is not affected by this block.
-$FixSerial  = ""   # v61: EMPTY ON PURPOSE. Owner is not sure MJ0G44E0 (Lenovo) is Engraving2 - it may be Engraving1, which is in use. No PC is rolled back until the serial is confirmed from the sticker.
+$FixSerial  = "MJ0G44E0"   # confirmed by Jamie Nov 17 2026: the Lenovo ThinkCentre with this serial is Engraving2
 $ThisSerial = "$((Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue).SerialNumber)".Trim()
 $OnHold     = ((Get-ItemProperty "HKLM:\SOFTWARE\SGSetup" -ErrorAction SilentlyContinue).Hold -eq 1)
 if ($Silent) {
