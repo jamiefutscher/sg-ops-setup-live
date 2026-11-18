@@ -16,6 +16,8 @@ This file is the record of owner decisions for the warehouse PC build. Read it b
 - Engraving1 is in use. Do not change it until Jamie decides, after Engraving2 is checked. Back up its current settings first.
 - Design1 and Printing3 never ran the setup, so there is nothing to roll back. Printing2 ran only the Nov 4 build; if it does receive the update it records v60 and changes nothing.
 
+- v61 (same evening): the Engraving2 roll-back is switched off. Jamie believes the Lenovo (MJ0G44E0) may be Engraving1, the PC in use. No PC is changed by the nightly update until the serial of the broken engraving PC is read from its sticker and confirmed.
+
 ## Station groups
 - Warehouse stations (sign in as hello@thinkliquor.com): Pack1-4, Basket1-2, Production2. All identical.
 - Design stations (sign in as info@spiritedgifts.com): Engraving1 (Dell tower), Engraving2 (Lenovo ThinkCentre), Printing2, Printing3, Design1. Different rules: Edge stays, Dropbox and fonts needed, Corel licensing open. Do not touch Printing3 or Reyshine's PC.
