@@ -46,7 +46,7 @@ $ProgressPreference    = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ScriptVersion = "v62"
+$ScriptVersion = "v63"
 $Work      = "C:\SGSetup"
 $Stamp     = Get-Date -Format "yyyyMMdd-HHmm"
 New-Item -ItemType Directory -Path $Work -Force | Out-Null
@@ -93,7 +93,7 @@ $Station = if ($NewName) { $NewName } else { $env:COMPUTERNAME }
 $AdminStation = ($Station -like "Admin*") -or ($Station -match '^(Groundhog|Jefa|Jack|Hamster)$')   # Admin1, Admin2, Jamie's laptop...: looser rules (Chrome unlocked)
 $NeedsDropbox = $Station -match '^(Printing|Engraving|Admin|Groundhog|Jefa|Jack|Hamster)'   # design/engraving/admin stations use the Dropbox desktop app
 
-if (-not $WebrootKey) {
+if (-not $WebrootKey -and -not $Silent) {
     Write-Host ""
     Write-Host "Webroot keycode for THIS PC (xxxx-xxxx-xxxx-xxxx-xxxx). Press Enter to skip Webroot:" -ForegroundColor Yellow
     $WebrootKey = (Read-Host "Keycode").Trim()
@@ -194,6 +194,21 @@ if ($Silent) {
         $rb | Set-Content -Path (Join-Path $Work "results\Engraving2-rollback.txt") -Encoding UTF8
         try { $rb | Set-Content -Path "C:\Users\Public\Desktop\Engraving2 roll-back report.txt" -Encoding UTF8 } catch {}
         Set-Reg "HKLM:\SOFTWARE\SGSetup" "Hold" 1
+    }
+    # v63, owner order Nov 20 2026: Num Lock ON everywhere. Staff had to press Num Lock before typing a PIN on every PC.
+    # Sign-in screen and new accounts:
+    Set-Reg "Registry::HKEY_USERS\.DEFAULT\Control Panel\Keyboard" "InitialKeyboardIndicators" "2147483650" "String"
+    # Everyone already signed in on this PC (their hive is loaded):
+    foreach ($h in Get-ChildItem Registry::HKEY_USERS -ErrorAction SilentlyContinue) {
+        if ($h.PSChildName -match '^S-1-5-21-' -and $h.PSChildName -notmatch '_Classes$') {
+            Set-Reg "Registry::$($h.Name)\Control Panel\Keyboard" "InitialKeyboardIndicators" "2147483650" "String"
+        }
+    }
+    # And for anyone who signs in later, correct the per-user script this build left behind:
+    $us = Join-Path $Work "user-setup.ps1"
+    if (Test-Path $us) {
+        (Get-Content $us -Raw).Replace('"InitialKeyboardIndicators" -Value "0"','"InitialKeyboardIndicators" -Value "2147483650"').Replace('if ([Console]::NumberLock)','if (-not [Console]::NumberLock)') | Set-Content $us -Encoding UTF8
+        Set-Reg "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{7A1E5D2C-5601-4F2B-9C3D-0000000000A1}" "Version" "1,0,0,15" "String"
     }
     Set-Reg "HKLM:\SOFTWARE\SGSetup" "Version" $ScriptVersion "String"
     Set-Reg "HKLM:\SOFTWARE\SGSetup" "LastRun" (Get-Date -Format "yyyy-MM-dd HH:mm") "String"
@@ -787,8 +802,8 @@ if ($av) {
     "$sid|$dir" | Set-Content "C:\SGSetup\avatars\pending-$uname.txt"
     "account picture staged: $av" | Add-Content $log
 }
-# Num Lock off at every sign-in (laptop keyboards otherwise type numbers instead of letters)
-New-ItemProperty -Path "HKCU:\Control Panel\Keyboard" -Name "InitialKeyboardIndicators" -Value "0" -PropertyType String -Force | Out-Null
+# Num Lock ON at every sign-in (owner order Nov 20 2026, and her own 2023 note in Drive: staff must not press Num Lock to type a PIN)
+New-ItemProperty -Path "HKCU:\Control Panel\Keyboard" -Name "InitialKeyboardIndicators" -Value "2147483650" -PropertyType String -Force | Out-Null
 # clipboard history (Win+V) and voice typing (Win+H) on for this user
 New-Item -Path "HKCU:\Software\Microsoft\Clipboard" -Force | Out-Null
 New-ItemProperty -Path "HKCU:\Software\Microsoft\Clipboard" -Name "EnableClipboardHistory" -Value 1 -PropertyType DWord -Force | Out-Null
@@ -820,8 +835,8 @@ $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 if (Test-Path $chrome) { Start-Process $chrome -ArgumentList "--make-default-browser" }
 # close the stuck Settings window left by v35-v37 (auto-opened PIN page)
 Get-Process SystemSettings -ErrorAction SilentlyContinue | Stop-Process -Force
-# Num Lock off right now too, not only at next sign-in
-if ([Console]::NumberLock) { (New-Object -ComObject WScript.Shell).SendKeys("{NUMLOCK}") }
+# Num Lock ON right now too, not only at next sign-in
+if (-not [Console]::NumberLock) { (New-Object -ComObject WScript.Shell).SendKeys("{NUMLOCK}") }
 # Caps Lock off too: the barcode scanners type like a keyboard, so Caps Lock flips the case of every SKU they scan
 if ([Console]::CapsLock) { (New-Object -ComObject WScript.Shell).SendKeys("{CAPSLOCK}") }
 '@
@@ -834,12 +849,12 @@ Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" "Disab
 $as = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{7A1E5D2C-5601-4F2B-9C3D-0000000000A1}"
 Set-Reg $as "(Default)"  "Spirited Gifts user setup" "String"
 Set-Reg $as "StubPath"   "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\SGSetup\user-setup.ps1" "String"
-Set-Reg $as "Version"    "1,0,0,14" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
+Set-Reg $as "Version"    "1,0,0,15" "String"   # bump this whenever user-setup.ps1 changes so existing users get it again at next sign-in
 Set-Reg $as "IsInstalled" 1
 Ok "Per-user setup registered for next sign-in (taskbar reset to Chrome + Explorer, wallpaper, widgets off, Chrome default prompt)"
 
 # ---------------------------------------------------------------- 4b. SGAdmin (same local admin on every PC)
-Set-Reg "Registry::HKEY_USERS\.DEFAULT\Control Panel\Keyboard" "InitialKeyboardIndicators" "2147483648" "String"   # sign-in screen: Num Lock off
+Set-Reg "Registry::HKEY_USERS\.DEFAULT\Control Panel\Keyboard" "InitialKeyboardIndicators" "2147483650" "String"   # sign-in screen: Num Lock ON
 # Windows Update: install quietly, never nag "restart now / wait an hour" on a signed-in user; Windows 10: no end-of-support / upgrade-to-11 screens, no News & Interests
 $wu = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
 Set-Reg "$wu\AU" "NoAutoRebootWithLoggedOnUsers" 1
@@ -889,7 +904,7 @@ Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" "Devic
 Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" "LastLoggedOnProvider" "" "String"
 Set-Reg "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" "dontdisplaylastusername" 0
 Ok "Sign-in screen will show the Add work account option"
-Set-Reg "Registry::HKEY_USERS\.DEFAULT\Control Panel\Keyboard" "InitialKeyboardIndicators" "0" "String"   # Num Lock OFF at the sign-in screen / new users
+Set-Reg "Registry::HKEY_USERS\.DEFAULT\Control Panel\Keyboard" "InitialKeyboardIndicators" "2147483650" "String"   # Num Lock ON at the sign-in screen / new users
 # device-management enrollment is governed by the Admin Console setting (currently ON); console overrides registry
 Set-Reg "HKLM:\SOFTWARE\Policies\Google\CloudManagement" "EnrollmentToken" $GcpwToken "String"
 Ok "GCPW: sign-in allowed for $GcpwDomains, org token set"

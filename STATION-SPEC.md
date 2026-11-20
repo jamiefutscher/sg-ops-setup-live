@@ -18,6 +18,7 @@ This file is the record of owner decisions for the warehouse PC build. Read it b
 
 - v61 (same evening): the Engraving2 roll-back is switched off. Jamie believes the Lenovo (MJ0G44E0) may be Engraving1, the PC in use. No PC is changed by the nightly update until the serial of the broken engraving PC is read from its sticker and confirmed.
 - v62 (same evening): Jamie confirmed MJ0G44E0 (Lenovo ThinkCentre, info@) is Engraving2. The roll-back from v60 is switched back on for that one PC.
+- CORRECTION Nov 20 2026: Num Lock must be ON at startup on every PC. Jamie documented this herself in 2023 ("number lock" doc in the shared Drive). Builds v1-v62 of this script wrote the opposite value and overrode her fix, so staff had to press Num Lock before typing a PIN. v63 sets it ON at the sign-in screen, for every account already on the PC, and for accounts added later. Caps Lock stays OFF (barcode scanners).
 
 ## Station groups
 - Warehouse stations (sign in as hello@thinkliquor.com): Pack1-4, Basket1-2, Production2. All identical.
